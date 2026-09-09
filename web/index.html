@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Seguridad</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .header-info { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; flex-wrap: wrap; gap: 10px; }
+        .btn { padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer; background: rgba(255,255,255,0.2); color: white; transition: 0.3s; }
+        .btn:hover { background: rgba(255,255,255,0.3); transform: scale(1.05); }
+        .btn-success { background: #28a745; color: white; }
+        .btn-success:hover { background: #218838; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .stat-card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; }
+        .stat-card h3 { font-size: 12px; color: #666; margin: 0; }
+        .stat-number { font-size: 28px; font-weight: bold; margin: 5px 0; }
+        .stat-critical .stat-number { color: #e74c3c; }
+        .stat-high .stat-number { color: #e67e22; }
+        .stat-medium .stat-number { color: #f1c40f; }
+        .charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .chart-container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .chart-container h3 { margin-top: 0; margin-bottom: 15px; color: #444; }
+        .chart-wrapper { position: relative; width: 100%; height: 280px; background: #fafafa; border-radius: 8px; }
+        .chart-wrapper canvas { width: 100% !important; height: 100% !important; }
+        .iframe-wrapper { width: 100%; height: 280px; border: none; border-radius: 8px; background: #fafafa; }
+        .section { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .section h3 { margin-top: 0; margin-bottom: 15px; color: #444; }
+        .table-responsive { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { background: #f8f9fa; padding: 10px; text-align: left; border-bottom: 2px solid #e9ecef; font-weight: 600; }
+        td { padding: 10px; border-bottom: 1px solid #e9ecef; }
+        tr:hover { background: #f8f9fa; }
+        .severity-critical { color: #e74c3c; font-weight: bold; }
+        .severity-high { color: #e67e22; font-weight: bold; }
+        .severity-medium { color: #f1c40f; font-weight: bold; }
+        .status-badge { padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .status-badge.completado { background: #d4edda; color: #155724; }
+        .status-badge.en_proceso { background: #fff3cd; color: #856404; }
+        .status-badge.error { background: #f8d7da; color: #721c24; }
+        code { background: #f5f5f5; padding: 2px 5px; border-radius: 3px; font-size: 11px; }
+        .footer { text-align: center; color: #999; padding: 20px; font-size: 13px; }
+        .no-data { text-align: center; color: #999; padding: 20px; }
+        #fallback1 { display: none; text-align: center; color: #999; padding: 20px; }
+        .add-form { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+        .add-form input[type=text] { padding: 8px 12px; border-radius: 8px; border: none; flex: 1; min-width: 180px; }
+        @media (max-width: 768px) { .charts-row { grid-template-columns: 1fr; } .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔐 Dashboard de Seguridad</h1>
+            <div style="margin-top:10px;font-size:13px;opacity:.9;">Agente de Seguridad v4 (Go) | Escaneo concurrente</div>
+            <div class="header-info">
+                <span id="lastUpdate">Cargando...</span>
+                <div>
+                    <button onclick="recargarDatos()" class="btn">🔄 Actualizar</button>
+                    <button onclick="location.reload()" class="btn btn-success">↻ Recargar</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h3>➕ Agregar sitio y escanear</h3>
+            <div class="add-form">
+                <input type="text" id="newUrl" placeholder="https://ejemplo.com">
+                <input type="text" id="newNombre" placeholder="Nombre (opcional)">
+                <button onclick="agregarSitio()" class="btn btn-success">Agregar y escanear</button>
+                <span id="addMsg" style="font-size:13px;"></span>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card"><h3>🌐 Sitios</h3><div class="stat-number" id="totalSitios">0</div></div>
+            <div class="stat-card"><h3>🔍 Escaneos</h3><div class="stat-number" id="totalEscaneos">0</div></div>
+            <div class="stat-card"><h3>🚨 Vulns</h3><div class="stat-number" id="totalVulns">0</div></div>
+            <div class="stat-card stat-critical"><h3>🔴 Críticas</h3><div class="stat-number" id="totalCriticas">0</div></div>
+            <div class="stat-card stat-high"><h3>🟠 Altas</h3><div class="stat-number" id="totalAltas">0</div></div>
+            <div class="stat-card stat-medium"><h3>🟡 Medias</h3><div class="stat-number" id="totalMedias">0</div></div>
+        </div>
+
+        <div class="charts-row">
+            <div class="chart-container">
+                <h3>📈 Escaneos y Vulnerabilidades (Últimos 30 días)</h3>
+                <div class="chart-wrapper" id="dailyChartWrapper">
+                    <canvas id="dailyChart"></canvas>
+                </div>
+                <div id="fallback1">📊 No hay datos para mostrar</div>
+            </div>
+            <div class="chart-container">
+                <h3>🎯 Distribución de Vulnerabilidades</h3>
+                <iframe src="severidad_chart" class="iframe-wrapper" id="severidadIframe" frameborder="0"></iframe>
+            </div>
+        </div>
+
+        <div class="section"><h3>🌐 Sitios Activos</h3>
+            <div class="table-responsive"><table>
+                <thead><tr><th>ID</th><th>URL</th><th>Nombre</th><th>Último Escaneo</th><th>Escaneos</th><th>Vulns</th><th></th></tr></thead>
+                <tbody id="sitiosBody"><tr><td colspan="7" class="no-data">Cargando...</td></tr></tbody>
+            </table></div>
+        </div>
+
+        <div class="section"><h3>🔄 Últimos Escaneos</h3>
+            <div class="table-responsive"><table>
+                <thead><tr><th>Fecha</th><th>Sitio</th><th>Estado</th><th>Total</th><th>Críticas</th><th>Altas</th><th>Medias</th><th>Puertos</th><th>Directorios</th></tr></thead>
+                <tbody id="escaneosBody"><tr><td colspan="9" class="no-data">Cargando...</td></tr></tbody>
+            </table></div>
+        </div>
+
+        <div class="section"><h3>🚨 Vulnerabilidades</h3>
+            <div class="table-responsive"><table>
+                <thead><tr><th>Fecha</th><th>Sitio</th><th>Tipo</th><th>Severidad</th><th>Parámetro</th><th>Payload</th></tr></thead>
+                <tbody id="vulnerabilidadesBody"><tr><td colspan="6" class="no-data">Cargando...</td></tr></tbody>
+            </table></div>
+        </div>
+
+        <div class="section"><h3>🔄 Cambios</h3>
+            <div class="table-responsive"><table>
+                <thead><tr><th>Fecha</th><th>Sitio</th><th>Tipo</th><th>Descripción</th></tr></thead>
+                <tbody id="cambiosBody"><tr><td colspan="4" class="no-data">Cargando...</td></tr></tbody>
+            </table></div>
+        </div>
+
+        <div class="footer">Agente de Seguridad v4 (Go) | Datos en tiempo real</div>
+    </div>
+
+    <script src="js/chart.min.js"></script>
+    <script>
+    console.log('🚀 Dashboard iniciado');
+
+    let dailyChart = null;
+
+    if (typeof Chart !== 'undefined') {
+        console.log('✅ Chart.js cargado, versión:', Chart.version);
+    } else {
+        console.error('❌ Chart.js NO está cargado');
+    }
+
+    function recargarDatos() {
+        location.reload();
+    }
+
+    function actualizarIframe() {
+        const iframe = document.getElementById('severidadIframe');
+        if (iframe) {
+            iframe.src = 'severidad_chart?t=' + new Date().getTime();
+        }
+    }
+
+    function crearGraficoDiario(data) {
+        try {
+            if (dailyChart) { try { dailyChart.destroy(); } catch(e){} dailyChart = null; }
+            const canvas1 = document.getElementById('dailyChart');
+            if (!canvas1) { console.error('❌ No se encontró dailyChart'); return; }
+            const ctx1 = canvas1.getContext('2d');
+            ctx1.clearRect(0, 0, canvas1.width, canvas1.height);
+
+            const dailyData = data.grafico_diario || [];
+            if (dailyData.length === 0) { $('#fallback1').show(); return; }
+            $('#fallback1').hide();
+
+            const sorted = [...dailyData].sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+            const labels = sorted.map(d => { const f = new Date(d.fecha); return f.toLocaleDateString('es-ES', { day: '2-digit', month: 'short' }); });
+            const escaneos = sorted.map(d => parseInt(d.total_escaneos) || 0);
+            const criticas = sorted.map(d => parseInt(d.criticas) || 0);
+            const altas = sorted.map(d => parseInt(d.altas) || 0);
+            const medias = sorted.map(d => parseInt(d.medias) || 0);
+
+            dailyChart = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: '🔴 Críticas', data: criticas, backgroundColor: 'rgba(231, 76, 60, 0.85)', borderColor: '#c0392b', borderWidth: 2, borderRadius: 4, order: 2 },
+                        { label: '🟠 Altas', data: altas, backgroundColor: 'rgba(230, 126, 34, 0.85)', borderColor: '#d35400', borderWidth: 2, borderRadius: 4, order: 3 },
+                        { label: '🟡 Medias', data: medias, backgroundColor: 'rgba(241, 196, 15, 0.85)', borderColor: '#f39c12', borderWidth: 2, borderRadius: 4, order: 4 },
+                        { label: '📊 Escaneos', data: escaneos, type: 'line', borderColor: '#2ecc71', backgroundColor: 'rgba(46, 204, 113, 0.15)', borderWidth: 3, fill: true, tension: 0.4, pointBackgroundColor: '#27ae60', pointBorderColor: '#1e8449', pointBorderWidth: 2, pointRadius: 5, order: 1 }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: true,
+                    plugins: { legend: { position: 'top', labels: { usePointStyle: true, padding: 15, font: { size: 11 } } }, tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', padding: 10, cornerRadius: 8 } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } }, x: { grid: { display: false } } }
+                }
+            });
+            console.log('✅ Gráfico diario creado');
+        } catch(error) {
+            console.error('❌ Error creando gráfico diario:', error);
+            $('#fallback1').show();
+        }
+    }
+
+    function escanearSitio(id) {
+        fetch('api/scan', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sitio_id: id })
+        }).then(() => actualizarDatos()).catch(() => {});
+    }
+
+    function agregarSitio() {
+        const url = document.getElementById('newUrl').value.trim();
+        const nombre = document.getElementById('newNombre').value.trim();
+        const msg = document.getElementById('addMsg');
+        msg.textContent = '';
+        if (!url) { msg.textContent = '⚠️ Ingresa una URL'; return; }
+
+        fetch('api/sitios', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url: url, nombre: nombre })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) { msg.textContent = '❌ ' + data.error; return; }
+            msg.textContent = '✅ Sitio ' + data.id + ' agregado. Iniciando escaneo...';
+            document.getElementById('newUrl').value = '';
+            document.getElementById('newNombre').value = '';
+            escanearSitio(data.id);
+            setTimeout(actualizarDatos, 2000);
+        })
+        .catch(e => { msg.textContent = '❌ ' + e; });
+    }
+
+    function actualizarDatos() {
+        $('#lastUpdate').text('Actualizando...');
+
+        $.ajax({
+            url: 'api/estadisticas',
+            method: 'GET',
+            dataType: 'json',
+            timeout: 10000,
+            success: function(data) {
+                $('#totalSitios').text(data.total_sitios || 0);
+                $('#totalEscaneos').text(data.total_escaneos || 0);
+                $('#totalVulns').text(data.total_vulnerabilidades || 0);
+                const s = data.por_severidad || {};
+                $('#totalCriticas').text(s['Crítica'] || 0);
+                $('#totalAltas').text(s['Alta'] || 0);
+                $('#totalMedias').text(s['Media'] || 0);
+
+                const sb = $('#sitiosBody'); sb.empty();
+                if (data.sitios && data.sitios.length > 0) {
+                    data.sitios.forEach(sit => {
+                        const ultimo = sit.ultimo_escaneo ? new Date(sit.ultimo_escaneo).toLocaleString() : 'Nunca';
+                        sb.append('<tr><td>'+sit.id+'</td><td><a href="'+sit.url+'" target="_blank">'+sit.url+'</a></td><td>'+(sit.nombre||'-')+'</td><td>'+ultimo+'</td><td>'+(sit.total_escaneos||0)+'</td><td>'+(sit.total_vulns||0)+'</td><td><button class="btn btn-success" onclick="escanearSitio('+sit.id+')">Escanear</button></td></tr>');
+                    });
+                } else {
+                    sb.append('<tr><td colspan="7" class="no-data">No hay sitios activos</td></tr>');
+                }
+
+                const vb = $('#vulnerabilidadesBody'); vb.empty();
+                if (data.vulnerabilidades_recientes && data.vulnerabilidades_recientes.length > 0) {
+                    data.vulnerabilidades_recientes.forEach(v => {
+                        const fecha = new Date(v.fecha_deteccion).toLocaleString();
+                        const clase = 'severity-' + v.severidad.toLowerCase();
+                        vb.append('<tr><td>'+fecha+'</td><td>'+(v.nombre||v.url)+'</td><td>'+v.tipo+'</td><td class="'+clase+'">'+v.severidad+'</td><td>'+(v.parametro||'-')+'</td><td><code>'+(v.payload||'').substring(0,50)+'</code></td></tr>');
+                    });
+                } else {
+                    vb.append('<tr><td colspan="6" class="no-data">No hay vulnerabilidades</td></tr>');
+                }
+
+                const eb = $('#escaneosBody'); eb.empty();
+                if (data.ultimos_escaneos && data.ultimos_escaneos.length > 0) {
+                    data.ultimos_escaneos.forEach(e => {
+                        const fecha = new Date(e.fecha_inicio).toLocaleString();
+                        const cls = e.estado === 'completado' ? 'completado' : (e.estado === 'en_proceso' ? 'en_proceso' : 'error');
+                        eb.append('<tr><td>'+fecha+'</td><td>'+(e.nombre||e.url)+'</td><td><span class="status-badge '+cls+'">'+e.estado+'</span></td><td>'+(e.total_vulnerabilidades||0)+'</td><td class="severity-critical">'+(e.criticas||0)+'</td><td class="severity-high">'+(e.altas||0)+'</td><td class="severity-medium">'+(e.medias||0)+'</td><td>'+(e.puertos_abiertos||0)+'</td><td>'+(e.directorios_encontrados||0)+'</td></tr>');
+                    });
+                } else {
+                    eb.append('<tr><td colspan="9" class="no-data">No hay escaneos</td></tr>');
+                }
+
+                const cb = $('#cambiosBody'); cb.empty();
+                if (data.cambios_recientes && data.cambios_recientes.length > 0) {
+                    data.cambios_recientes.forEach(c => {
+                        cb.append('<tr><td>'+new Date(c.fecha_deteccion).toLocaleString()+'</td><td>'+(c.nombre||c.url)+'</td><td>'+c.tipo_cambio+'</td><td>'+(c.descripcion||'-')+'</td></tr>');
+                    });
+                } else {
+                    cb.append('<tr><td colspan="4" class="no-data">No hay cambios</td></tr>');
+                }
+
+                if (dailyChart) { try { dailyChart.destroy(); } catch(e){} dailyChart = null; }
+                setTimeout(function() { crearGraficoDiario(data); }, 100);
+                setTimeout(function() { actualizarIframe(); }, 200);
+
+                $('#lastUpdate').text('Última actualización: ' + new Date().toLocaleString());
+            },
+            error: function(xhr, status, error) {
+                console.error('❌ Error:', error);
+                $('#lastUpdate').text('Error al actualizar');
+            }
+        });
+    }
+
+    $(document).ready(function() {
+        setTimeout(actualizarDatos, 500);
+        setInterval(function() { actualizarIframe(); }, 60000);
+        setInterval(function() { actualizarDatos(); }, 60000);
+    });
+    </script>
+</body>
+</html>

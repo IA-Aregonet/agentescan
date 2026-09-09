@@ -1,0 +1,46 @@
+services:
+  db:
+    image: mysql:8
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-agente_root}
+      MYSQL_DATABASE: agente_seguridad
+      MYSQL_USER: agente_user
+      MYSQL_PASSWORD: ${DB_PASSWORD:-agente_seguridad}
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uagente_user", "-p${DB_PASSWORD:-agente_seguridad}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: "8080"
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_USER: agente_user
+      DB_PASSWORD: ${DB_PASSWORD:-agente_seguridad}
+      DB_NAME: agente_seguridad
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      SCAN_INTERVAL_SECONDS: ${SCAN_INTERVAL_SECONDS:-18000}
+      MAX_WORKERS: ${MAX_WORKERS:-50}
+      REQUEST_TIMEOUT: ${REQUEST_TIMEOUT:-10}
+      REPORTS_DIR: /app/reportes
+      WORDLIST_PATH: wordlists/directorios_comunes.txt
+    ports:
+      - "8080:8080"
+    volumes:
+      - reportes:/app/reportes
+
+volumes:
+  db-data:
+  reportes:

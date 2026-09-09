@@ -1,0 +1,23 @@
+# Build artifacts
+agente-seguridad
+agente-seguridad.exe
+*.exe
+bin/
+
+# Local env / secrets
+.env
+*.env.local
+
+# Reports and runtime state (mounted via volumes)
+reportes/
+logs/
+*.json
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Git
+.git/
+.gitignore
