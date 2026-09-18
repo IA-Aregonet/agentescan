@@ -1,0 +1,25 @@
+# Entorno y secretos
+.env
+.env.local
+
+# Binarios compilados
+agent
+agente-seguridad
+*.exe
+*.test
+*.out
+
+# Go
+go1.26.0.linux-amd64.tar.gz
+
+# Reportes y logs
+reportes/
+*.log
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
