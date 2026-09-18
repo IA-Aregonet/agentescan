@@ -36,8 +36,7 @@ services:
       REQUEST_TIMEOUT: ${REQUEST_TIMEOUT:-10}
       REPORTS_DIR: /app/reportes
       WORDLIST_PATH: wordlists/directorios_comunes.txt
-    ports:
-      - "8080:8080"
+    
     volumes:
       - reportes:/app/reportes
 
