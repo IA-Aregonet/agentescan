@@ -31,19 +31,9 @@ func New(store *db.Store, ag *agent.Agent, webFS fs.FS) http.Handler {
 	mux.HandleFunc("/api/scan", h.scan)
 	mux.HandleFunc("/severidad_chart", h.severidadChart)
 
-        fileServer := http.FileServer(http.FS(webFS))
+	fileServer := http.FileServer(http.FS(webFS))
 	mux.Handle("/", fileServer)
 	return logRequests(mux)
-}
-}
-
-func subWeb(f fs.FS) fs.FS {
-	sub, err := fs.Sub(f, "web")
-	if err != nil {
-		log.Printf("⚠️  No se pudo acceder a web/: %v (usando FS completo)", err)
-		return f
-	}
-	return sub
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
