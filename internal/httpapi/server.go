@@ -31,9 +31,10 @@ func New(store *db.Store, ag *agent.Agent, webFS fs.FS) http.Handler {
 	mux.HandleFunc("/api/scan", h.scan)
 	mux.HandleFunc("/severidad_chart", h.severidadChart)
 
-	ffileServer := http.FileServer(http.FS(webFS))
+        fileServer := http.FileServer(http.FS(webFS))
 	mux.Handle("/", fileServer)
 	return logRequests(mux)
+}
 }
 
 func subWeb(f fs.FS) fs.FS {
