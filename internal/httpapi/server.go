@@ -37,13 +37,12 @@ func New(store *db.Store, ag *agent.Agent, webFS fs.FS) http.Handler {
 }
 
 func subWeb(f fs.FS) fs.FS {
-	if s, ok := f.(fs.SubFS); ok {
-		return s
+	sub, err := fs.Sub(f, "web")
+	if err != nil {
+		log.Printf("⚠️  No se pudo acceder a web/: %v (usando FS completo)", err)
+		return f
 	}
-	if sub, err := fs.Sub(f, "web"); err == nil {
-		return sub
-	}
-	return f
+	return sub
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {
