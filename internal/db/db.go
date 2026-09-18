@@ -47,7 +47,8 @@ func (s *Store) EnsureSchema() error {
 	stmts := []string{
 		`CREATE TABLE IF NOT EXISTS sitios (
 			id INT AUTO_INCREMENT PRIMARY KEY,
-			url VARCHAR(2048) NOT NULL UNIQUE,
+			url VARCHAR(2048) NOT NULL,
+                        UNIQUE KEY idx_url (url(768)),
 			nombre VARCHAR(255),
 			fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
 			ultimo_escaneo DATETIME,
